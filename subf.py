@@ -1,9 +1,15 @@
 #!/usr/bin/python3
-# Usage: subf.py domain.com securitytrailsapi
-
 import requests
 import re
 import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("domain", help="Domain to scan for subdomains eg: hackthebox.com")
+parser.add_argument("-a", "--apikey", help="Api key for SecurityTrails")
+parser.add_argument("-c", "--clean", action="store_true",
+                    help="Display clean output, handy for automation")
+args = parser.parse_args()
 
 def securitytrails(target, apikey):
 
@@ -38,7 +44,6 @@ def crtsh(target):
 
     return subs # Return results
 
-
 def dnsdumpster(target):
     # Request the webpage, return html of target
     homepagereq = requests.get('https://dnsdumpster.com/')
@@ -58,46 +63,72 @@ def dnsdumpster(target):
     }
     searchreq = requests.post('https://dnsdumpster.com/', data=data, cookies=homepagereq.cookies, headers=headers)
 
-
     # Extract Subdomains
     pattern = re.compile(r">([\w\-_\.]*." + target + ")<")
     subs = re.findall(pattern, searchreq.text)
 
     return subs
 
-print("")
-print("            ┌───┐")
-print("           ┌┘░░░│                           º     º")
-print("  ┌────────┴────┴────────────┐      º  O    o  º    º")
-print(" ┌┘░░░░░░░░░░░░░░░░░░░░░░░░░░├┐│  o      O º    º")
-print(" │░░░subf░subdomain finder░░░│├┤   º O    o  º")
-print(" └┐░░░░░░░░░░░░░░░░░░░░░░░░░░├┘│  O  º  o")
-print("  └──────────────────────────┘")
-print("")
+# Allows clean output incase user wants to automate with bash etc.
+def loginfo(string):
+    if args.clean:
+        return
+    
+    print(string)
+
+    
+# Display banner
+loginfo("")
+loginfo("            ┌───┐")
+loginfo("           ┌┘░░░│                           º     º")
+loginfo("  ┌────────┴────┴────────────┐      º  O    o  º    º")
+loginfo(" ┌┘░░░░░░░░░░░░░░░░░░░░░░░░░░├┐│  o      O º    º")
+loginfo(" │░░░Subf Subdomain Finder░░░│├┤   º O    o  º")
+loginfo(" └┐░░░░░░░░░░░░░░░░░░░░░░░░░░├┘│  O  º  o")
+loginfo("  └──────────────────────────┘")
+loginfo("")
+loginfo("Subf v1.0 | Made by Pyrochiliarch")
+loginfo("Searches online sites for subdomains")
+loginfo("")
 
 
-print("Subf v1.0 | Made by Pyrochiliarch")
-print("Searches online sites for subdomains")
-print("")
-
-if len(sys.argv) != 3:
-    print("Invalid number of args")
-    print("Usage: subf.py domain.com securitytrailsapikey")
-    print("Example: subf.py tesla.com uaGOJYS25GhYV7WPAl91nNPpCT1tzmt8")
-    exit()
 
 # Get results form each and remove duplicates
 # Removing duplicates is done before merging since we want to let the
 # user know how many results there were
-results_dnsdumpster = dnsdumpster(sys.argv[1])
-results_dnsdumpster = list(dict.fromkeys(results_dnsdumpster))
 
-results_crtsh = crtsh(sys.argv[1])
-results_crtsh = list(dict.fromkeys(results_crtsh))
+# Skip on errors
+try:
+    results_dnsdumpster = dnsdumpster(args.domain)
+    results_dnsdumpster = list(dict.fromkeys(results_dnsdumpster))
+except:
+    loginfo("Error getting DNS Dumpster results")
+    results_dnsdumpster = []
 
-results_securitytrails = securitytrails(sys.argv[1], sys.argv[2])
-results_securitytrails = list(dict.fromkeys(results_securitytrails))
+# Skip on errors
+try:
+    results_crtsh = crtsh(args.domain)
+    results_crtsh = list(dict.fromkeys(results_crtsh))
+except:
+    loginfo("Error getting Crt.sh results")
+    results_crtsh = []
 
+
+    
+# Only do securitytrails if an apikey was provided
+# Skip on errors
+if args.apikey:
+    try:
+        results_securitytrails = securitytrails(args.domain, args.apikey)
+        results_securitytrails = list(dict.fromkeys(results_securitytrails))
+    except:
+        loginfo("Error getting SecurityTrails results")
+        results_securitytrails = []
+else:
+    loginfo("SecurityTrails Api key not provided, skipping..")
+
+
+    
 # Join together, remove duplictes, sort
 results = results_dnsdumpster + results_crtsh + results_securitytrails
 results = list(dict.fromkeys(results))
@@ -105,11 +136,13 @@ results.sort()
 
 
 
-# Print num results from each method
-print("# DNS Dumpster: " + str(len(results_dnsdumpster)))
-print("# Crt.sh: " + str(len(results_crtsh)))
-print("# SecurityTrails: " + str(len(results_securitytrails)))
-print("")
+# print num results from each method
+loginfo("# DNS Dumpster: " + str(len(results_dnsdumpster)))
+loginfo("# Crt.sh: " + str(len(results_crtsh)))
+loginfo("# SecurityTrails: " + str(len(results_securitytrails)))
+loginfo("")
 
-# Print Results
+
+
+# print Results
 print("\n".join(results))
