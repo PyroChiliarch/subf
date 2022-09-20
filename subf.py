@@ -126,6 +126,7 @@ if args.apikey:
         results_securitytrails = []
 else:
     loginfo("SecurityTrails Api key not provided, skipping..")
+    results_securitytrails = []
 
 
     
